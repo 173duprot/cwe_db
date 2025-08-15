@@ -30,15 +30,15 @@ def record(db_path, manifest_path, root_path, min_lines=6):
         # Clean
         for nodes in QueryCursor(Query(lang, cmt)).captures(parser.parse(code).root_node).values():
             for n in nodes:
-                s, e = n.start_byte, n.end_byte # Byte
+                s, e = n.start_byte, n.end_byte # Bytes
                 code = code[:s] + bytes((ch if ch==10 else 32) for ch in code[s:e]) + code[e:]
 
         # Capture
         cve, flaw = manifest[f.name]
         for nodes in QueryCursor(Query(lang, fn)).captures(parser.parse(code).root_node).values():
             for n in nodes:
-                s, e = n.start_point[0]+1, n.end_point[0]+1 # Line
-                if e - s + 1 < min_lines: continue # filter
+                s, e = n.start_point[0]+1, n.end_point[0]+1 # Lines
+                if e - s + 1 < min_lines: continue # Filter
 
                 # Record
                 sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
