@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cwe_db"
+version = "0.1.0"
+description = "Packs Juliet Databases into SQLite using Tree-sitter."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "GPL3"}
+authors = [{name = "Wren"}]
+keywords = ["tree-sitter", "sqlite", "security", "cwe", "juliet"]
+dependencies = [
+  "tree-sitter>=0.25.1",
+  "tree_sitter_language_pack>=0.9.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/173duprot/cwe_db"
+
+[project.scripts]
+cwe_db = "cwe_db.cli:main"
+

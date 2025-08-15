@@ -1,0 +1,63 @@
+import sqlite3, xml.etree.ElementTree as ET
+from pathlib import Path
+from tree_sitter import Query, QueryCursor
+from tree_sitter_language_pack import get_language, get_parser
+
+LANGS = {
+    ext: (get_language(name), get_parser(name), fn, cmt)
+    for ext, name, fn, cmt in [
+        # C
+        ('.c',    'c', '(function_definition) @f', '(comment) @c'),
+        ('.h',    'c', '(function_definition) @f', '(comment) @c'),
+
+        # C++
+        ('.cpp',  'cpp', '(function_definition) @f', '(comment) @c'),
+        (".hpp",  'cpp', '(function_definition) @f', '(comment) @c'),
+        (".cxx",  'cpp', '(function_definition) @f', '(comment) @c'),
+        (".cc",   'cpp', '(function_definition) @f', '(comment) @c'),
+
+        # Java
+        (".java", "java", "(method_declaration) @f", "[(line_comment)(block_comment)] @c"),
+
+        # Python
+        (".py",   "python", "(function_definition) @f", "(comment) @c"),
+
+        # C-Sharp
+        (".cs",   "csharp","(method_declaration) @f",  "(comment) @c"),
+    ]
+}
+
+def cwe_db(db_path, manifest_path, root_path, min_lines=6):
+    sql = sqlite3.connect(db_path);
+    sql.cursor().execute("CREATE TABLE IF NOT EXISTS funcs (cve TEXT,file TEXT,start INT,end INT,vuln INT,code TEXT,PRIMARY KEY(cve, file,start))")
+
+    manifest = {f.get('path'): (n.get('name'), int(n.get('line')))
+                for f in ET.parse(manifest_path).iter('file')
+                if (n:=f.find('flaw')) is not None and n.get('line')}
+
+    # Files
+    for p in Path(root_path).rglob("*"):
+        if p.suffix not in LANGS or p.name not in manifest or not p.is_file(): continue # in manifest
+
+        lang, parser, qf, qc = LANGS[p.suffix]
+        code = p.read_bytes()
+
+        # Clean
+        for nodes in QueryCursor(Query(lang, qc)).captures(parser.parse(code).root_node).values():
+            for n in nodes:
+                a, b = n.start_byte, n.end_byte
+                code = code[:a] + bytes((ch if ch==10 else 32) for ch in code[a:b]) + code[b:]
+
+        # Capture
+        cve, flaw = manifest[p.name]
+        for nodes in QueryCursor(Query(lang, qf)).captures(parser.parse(code).root_node).values():
+            for n in nodes:
+                s, e = n.start_point[0]+1, n.end_point[0]+1
+                if e - s + 1 < min_lines: continue # filter
+                vuln = int(s <= flaw <= e); txt = n.text.decode('utf-8', 'ignore')
+
+                # Record
+                sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",(cve,p.name,s,e,vuln,txt))
+
+    sql.commit();
+    sql.close()
