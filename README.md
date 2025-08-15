@@ -5,11 +5,20 @@ Simple Juliet -> Sqlite Packer
 ## Install
 
 ```
+python -v venv .venv
+source .venv/bin/activate
 pip install git+https://github.com/173duprot/cwe_db.git
 ```
 
 ## Usage
+
 ```py
-from cwe_db import cwe_db
-cwe_db("out.db", "manifest.xml", "/path/to/repo", min_lines=6)
+import cwe_db
+cwe_db.record("out.db", "manifest.xml", "/path/to/repo", min_lines=6)
+```
+
+or
+
+```sh
+cwe_db ./example.db ./manifest.xml ./testcases --min-lines 8
 ```
