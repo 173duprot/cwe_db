@@ -30,8 +30,8 @@ def record(db_path, manifest_path, root_path, min_lines=6):
         # Clean
         for nodes in QueryCursor(Query(lang, qc)).captures(parser.parse(code).root_node).values():
             for n in nodes:
-                a, b = n.start_byte, n.end_byte
-                code = code[:a] + bytes((ch if ch==10 else 32) for ch in code[a:b]) + code[b:]
+                s, e = n.start_byte, n.end_byte
+                code = code[:s] + bytes((ch if ch==10 else 32) for ch in code[s:e]) + code[e:]
 
         # Capture
         cve, flaw = manifest[p.name]
