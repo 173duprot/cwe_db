@@ -39,6 +39,7 @@ def record(db_path, manifest_path, root_path, min_lines=6):
             for n in nodes:
                 s, e = n.start_point[0]+1, n.end_point[0]+1 # Line
                 if e - s + 1 < min_lines: continue # filter
+
                 # Record
                 sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
                     (cve, f.name, s, e, int(s <= flaw <= e), n.text.decode('utf-8', 'ignore')))
