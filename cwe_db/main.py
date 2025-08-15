@@ -16,9 +16,9 @@ def record(db_path, manifest_path, root_path, min_lines=6):
     sql = sqlite3.connect(db_path);
     sql.cursor().execute("CREATE TABLE IF NOT EXISTS funcs (cve TEXT,file TEXT,start INT,end INT,vuln INT,code TEXT,PRIMARY KEY(cve, file, start))")
 
-    manifest = {f.get('path'): (n.get('name'), int(n.get('line')))
+    manifest = {f['path']: (n['name'], int(n['line']))
                 for f in ET.parse(manifest_path).iter('file')
-                if (n:=f.find('flaw')) is not None and n.get('line')}
+                if (n := f.find('flaw')) and n.get('line')}
 
     # Files
     for f in Path(root_path).rglob("*"):
