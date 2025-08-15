@@ -20,5 +20,5 @@ cwe_db.record("out.db", "manifest.xml", "/path/to/repo", min_lines=6)
 or
 
 ```sh
-cwe_db ./example.db ./manifest.xml ./testcases --min-lines 8
+cwe_db ./example.db ./manifest.xml ./testcases --min-lines 6
 ```
