@@ -24,25 +24,24 @@ def record(db_path, manifest_path, root_path, min_lines=6):
     for f in Path(root_path).rglob("*"):
         if f.suffix not in LANGS or f.name not in manifest or not f.is_file(): continue # in manifest
 
-        lang, parser, fn, cmt = LANGS[f.suffix]
-        code = f.read_bytes()
+        # Parser
+        lang, parser, fn, cmt, code = (*LANGS[f.suffix], f.read_bytes())
 
         # Clean
         for nodes in QueryCursor(Query(lang, cmt)).captures(parser.parse(code).root_node).values():
             for n in nodes:
-                s, e = n.start_byte, n.end_byte
+                s, e = n.start_byte, n.end_byte # Byte
                 code = code[:s] + bytes((ch if ch==10 else 32) for ch in code[s:e]) + code[e:]
 
         # Capture
         cve, flaw = manifest[f.name]
         for nodes in QueryCursor(Query(lang, fn)).captures(parser.parse(code).root_node).values():
             for n in nodes:
-                s, e = n.start_point[0]+1, n.end_point[0]+1
+                s, e = n.start_point[0]+1, n.end_point[0]+1 # Line
                 if e - s + 1 < min_lines: continue # filter
                 vuln = int(s <= flaw <= e); txt = n.text.decode('utf-8', 'ignore')
 
                 # Record
                 sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",(cve,f.name,s,e,vuln,txt))
-
     sql.commit();
     sql.close()
