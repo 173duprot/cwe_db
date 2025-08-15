@@ -3,29 +3,14 @@ from pathlib import Path
 from tree_sitter import Query, QueryCursor
 from tree_sitter_language_pack import get_language, get_parser
 
-LANGS = {
-    ext: (get_language(name), get_parser(name), fn, cmt)
-    for ext, name, fn, cmt in [
-        # C
-        ('.c',    'c', '(function_definition) @f', '(comment) @c'),
-        ('.h',    'c', '(function_definition) @f', '(comment) @c'),
-
-        # C++
-        ('.cpp',  'cpp', '(function_definition) @f', '(comment) @c'),
-        (".hpp",  'cpp', '(function_definition) @f', '(comment) @c'),
-        (".cxx",  'cpp', '(function_definition) @f', '(comment) @c'),
-        (".cc",   'cpp', '(function_definition) @f', '(comment) @c'),
-
-        # Java
-        (".java", "java", "(method_declaration) @f", "[(line_comment)(block_comment)] @c"),
-
-        # Python
-        (".py",   "python", "(function_definition) @f", "(comment) @c"),
-
-        # C-Sharp
-        (".cs",   "csharp","(method_declaration) @f",  "(comment) @c"),
-    ]
-}
+LANGS = {ext:(get_language(lang), get_parser(lang), fn, cmt)
+         for lang, exts, fn, cmt in [
+             ('c',      ['.c','.h'],                  '(function_definition) @f', '(comment) @c'),
+             ('cpp',    ['.cpp','.hpp','.cxx','.cc'], '(function_definition) @f', '(comment) @c'),
+             ('java',   ['.java'],                    '(method_declaration) @f',  '[(line_comment)(block_comment)] @c'),
+             ('python', ['.py'],                      '(function_definition) @f', '(comment) @c'),
+             ('csharp', ['.cs'],                      '(method_declaration) @f',  '(comment) @c')
+         ] for ext in exts }
 
 def record(db_path, manifest_path, root_path, min_lines=6):
     sql = sqlite3.connect(db_path);
