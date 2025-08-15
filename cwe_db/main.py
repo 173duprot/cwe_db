@@ -39,10 +39,9 @@ def record(db_path, manifest_path, root_path, min_lines=6):
             for n in nodes:
                 s, e = n.start_point[0]+1, n.end_point[0]+1 # Line
                 if e - s + 1 < min_lines: continue # filter
-                vuln = int(s <= flaw <= e); txt = n.text.decode('utf-8', 'ignore')
-
                 # Record
-                sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",(cve,f.name,s,e,vuln,txt))
+                sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
+                    (cve, f.name, s, e, int(s <= flaw <= e), n.text.decode('utf-8', 'ignore')))
 
     # Save
     sql.commit();
