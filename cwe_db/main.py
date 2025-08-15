@@ -14,35 +14,35 @@ LANGS = {ext:(get_language(lang), get_parser(lang), fn, cmt)
 
 def record(db_path, manifest_path, root_path, min_lines=6):
     sql = sqlite3.connect(db_path);
-    sql.cursor().execute("CREATE TABLE IF NOT EXISTS funcs (cve TEXT,file TEXT,start INT,end INT,vuln INT,code TEXT,PRIMARY KEY(cve, file,start))")
+    sql.cursor().execute("CREATE TABLE IF NOT EXISTS funcs (cve TEXT,file TEXT,start INT,end INT,vuln INT,code TEXT,PRIMARY KEY(cve, file, start))")
 
     manifest = {f.get('path'): (n.get('name'), int(n.get('line')))
                 for f in ET.parse(manifest_path).iter('file')
                 if (n:=f.find('flaw')) is not None and n.get('line')}
 
     # Files
-    for p in Path(root_path).rglob("*"):
-        if p.suffix not in LANGS or p.name not in manifest or not p.is_file(): continue # in manifest
+    for f in Path(root_path).rglob("*"):
+        if f.suffix not in LANGS or f.name not in manifest or not f.is_file(): continue # in manifest
 
-        lang, parser, qf, qc = LANGS[p.suffix]
-        code = p.read_bytes()
+        lang, parser, fn, cmt = LANGS[f.suffix]
+        code = f.read_bytes()
 
         # Clean
-        for nodes in QueryCursor(Query(lang, qc)).captures(parser.parse(code).root_node).values():
+        for nodes in QueryCursor(Query(lang, cmt)).captures(parser.parse(code).root_node).values():
             for n in nodes:
                 s, e = n.start_byte, n.end_byte
                 code = code[:s] + bytes((ch if ch==10 else 32) for ch in code[s:e]) + code[e:]
 
         # Capture
-        cve, flaw = manifest[p.name]
-        for nodes in QueryCursor(Query(lang, qf)).captures(parser.parse(code).root_node).values():
+        cve, flaw = manifest[f.name]
+        for nodes in QueryCursor(Query(lang, fn)).captures(parser.parse(code).root_node).values():
             for n in nodes:
                 s, e = n.start_point[0]+1, n.end_point[0]+1
                 if e - s + 1 < min_lines: continue # filter
                 vuln = int(s <= flaw <= e); txt = n.text.decode('utf-8', 'ignore')
 
                 # Record
-                sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",(cve,p.name,s,e,vuln,txt))
+                sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",(cve,f.name,s,e,vuln,txt))
 
     sql.commit();
     sql.close()
