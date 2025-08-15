@@ -14,11 +14,11 @@ pip install git+https://github.com/173duprot/cwe_db.git
 
 ```py
 import cwe_db
-cwe_db.record("out.db", "manifest.xml", "/path/to/repo", min_lines=6)
+cwe_db.record("out.db", "manifest.xml", "./testcases", min_lines=6)
 ```
 
 or
 
 ```sh
-cwe_db ./example.db ./manifest.xml ./testcases --min-lines 6
+cwe_db ./out.db ./manifest.xml ./testcases --min-lines 6
 ```
