@@ -43,5 +43,7 @@ def record(db_path, manifest_path, root_path, min_lines=6):
 
                 # Record
                 sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",(cve,f.name,s,e,vuln,txt))
+
+    # Save
     sql.commit();
     sql.close()
