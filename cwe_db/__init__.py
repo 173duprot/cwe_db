@@ -1,3 +1,3 @@
-from .main import cwe_db
-__all__ = ["cwe_db"]
+from .main import record
+__all__ = ["record"]
 __version__ = "0.1.0"

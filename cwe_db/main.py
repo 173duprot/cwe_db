@@ -27,7 +27,7 @@ LANGS = {
     ]
 }
 
-def cwe_db(db_path, manifest_path, root_path, min_lines=6):
+def record(db_path, manifest_path, root_path, min_lines=6):
     sql = sqlite3.connect(db_path);
     sql.cursor().execute("CREATE TABLE IF NOT EXISTS funcs (cve TEXT,file TEXT,start INT,end INT,vuln INT,code TEXT,PRIMARY KEY(cve, file,start))")
 

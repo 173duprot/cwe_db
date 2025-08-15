@@ -1,5 +1,5 @@
 import argparse
-from .main import cwe_db
+from .main import record
 
 def main():
     p = argparse.ArgumentParser()
@@ -8,4 +8,4 @@ def main():
     p.add_argument("root_path")
     p.add_argument("--min-lines", type=int, default=6)
     args = p.parse_args()
-    cwe_db(args.db_path, args.manifest_path, args.root_path, args.min_lines)
+    record(args.db_path, args.manifest_path, args.root_path, args.min_lines)
