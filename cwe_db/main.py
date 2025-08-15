@@ -24,7 +24,7 @@ def record(db_path, manifest_path, root_path, min_lines=6):
     for f in Path(root_path).rglob("*"):
         if f.suffix not in LANGS or f.name not in manifest or not f.is_file(): continue # in manifest
 
-        # Parser
+        # Get
         lang, parser, fn, cmt, code = (*LANGS[f.suffix], f.read_bytes())
 
         # Clean
