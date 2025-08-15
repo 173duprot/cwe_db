@@ -5,7 +5,7 @@ Simple Juliet -> Sqlite Packer
 ## Install
 
 ```
-python -v venv .venv
+python -m venv .venv
 source .venv/bin/activate
 pip install git+https://github.com/173duprot/cwe_db.git
 ```
