@@ -14,7 +14,7 @@ LANGS = {ext:(get_language(lang), get_parser(lang), fn, cmt)
 
 def record(db_path, manifest_path, root_path, min_lines=6):
     sql = sqlite3.connect(db_path);
-    sql.cursor().execute("CREATE TABLE IF NOT EXISTS funcs (cve TEXT,file TEXT,start INT,end INT,isvuln INT,vuln INT,code TEXT,PRIMARY KEY(cve, file))")
+    sql.cursor().execute("CREATE TABLE IF NOT EXISTS funcs (cve TEXT,file TEXT,start INT,end INT,vuln INT,code TEXT,PRIMARY KEY(cve, file))")
 
     manifest = {f.get('path'): (n.get('name'), int(n.get('line')))
                 for f in ET.parse(manifest_path).iter('file')
@@ -41,9 +41,11 @@ def record(db_path, manifest_path, root_path, min_lines=6):
                 if e - s + 1 < min_lines: continue # Filter
 
                 # Record
-                sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?,?)",
-                    (cve, f.name, s, e, int(s <= flaw <= e), (flaw - s), n.text.decode('utf-8', 'ignore')))
+                sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
+                    (cve, f.name, s, e, (flaw-s)if(s<=flaw<=e)else(None), n.text.decode('utf-8', 'ignore')))
 
     # Save
     sql.commit();
     sql.close()
+
+record("ex.db","./C/manifest.xml","./C/testcases/CWE114_Process_Control/")
