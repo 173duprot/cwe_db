@@ -14,11 +14,11 @@ LANGS = {ext:(get_language(lang), get_parser(lang), fn, cmt)
 
 def record(db_path, manifest_path, root_path, min_lines=6):
     sql = sqlite3.connect(db_path);
-    sql.cursor().execute("CREATE TABLE IF NOT EXISTS funcs (cve TEXT,file TEXT,start INT,end INT,vuln INT,code TEXT,PRIMARY KEY(cve, file, start))")
+    sql.cursor().execute("CREATE TABLE IF NOT EXISTS funcs (cve TEXT,file TEXT,start INT,end INT,vuln INT,code TEXT,PRIMARY KEY(cwe, file))")
 
     manifest = {f.get('path'): (n.get('name'), int(n.get('line')))
                 for f in ET.parse(manifest_path).iter('file')
-                if (n := f.find('flaw')) and n.get('line')}
+                if (n:=f.find('flaw')) is not None and n.get('line')}
 
     # Files
     for f in Path(root_path).rglob("*"):
