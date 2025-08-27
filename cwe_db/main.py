@@ -40,12 +40,12 @@ def record(db_path, manifest_path, root_path, min_lines=6):
             for n in nodes:
                 s, e = n.start_point[0]+1, n.end_point[0]+1 # Lines
                 if e - s + 1 < min_lines: continue # Filter
-                vulns = [str(line-s) for(line)in(lines) if(s<=line<=e)] # Extract
+                vulns = [str(line-(s-1)) for(line)in(lines) if(s<=line<=e)] # Extract
 
                 # Record
                 sql.cursor().execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
                     (cve, f.name, s, e, ",".join(vulns)if(vulns)else(None), n.text.decode('utf-8', 'ignore')))
 
     # Save
-    sql.commit();
+    sql.commit()
     sql.close()
