@@ -18,7 +18,3 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/173duprot/cwe_db"
-
-[project.scripts]
-cwe_db = "cwe_db.cli:main"
-
