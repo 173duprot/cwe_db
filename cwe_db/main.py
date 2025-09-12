@@ -13,10 +13,9 @@ class CVE_DB:
     def devign(s,src):
         # Extract
         for x in json.load(open(src)):
-            # Record
             if all(k in x for k in ("project","commit_id","target","func")):
                 s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
-                    (x["project"],x["commit_id"],None,None,str(x["target"]),x["func"]))
+                    (x["project"],x["commit_id"],None,None,str(x["target"]),x["func"])) # Record
         return s
 
     def juliet(s,src,root,min_lines=6):
