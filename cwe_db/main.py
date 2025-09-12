@@ -55,7 +55,7 @@ class CVE_DB:
             repo.git.checkout(info["buggy_commit_id"])
 
             # Record
-            for f in unidiff.PatchSet.from_filename(p.parent / "bug.patch", encoding='utf-8'):
+            for f in unidiff.PatchSet.from_filename(p.parent / "bug_patch.txt", encoding='utf-8'):
                 if not Path(f.path).suffix in CVE_DB.CODE.LANGS: continue
                 code = CVE_DB.CODE(Path(f.path).suffix, (repo_path / f.path).read_bytes()).strip()
                 for n in code.captures("fn"):
