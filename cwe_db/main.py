@@ -50,7 +50,12 @@ class CVE_DB:
             # Fetch
             repo_path=Path(f"/tmp/{project_name}")
             repo=Repo.clone_from(proj_info["github_url"],repo_path)if not repo_path.exists()else Repo(repo_path)
-            repo.git.checkout(info["buggy_commit_id"])
+            try:
+                print("Checking out commit:", repr(info["buggy_commit_id"]))
+                repo.git.checkout(info["buggy_commit_id"])
+            except Exception as e:
+                print(f"[!] Failed to checkout {info['buggy_commit_id']} for {project_name}: {e}")
+                continue  # Skip this project if checkout fails
 
             # Record
             for f in unidiff.PatchSet.from_filename(p.parent/"bug_patch.txt",encoding="utf-8"):
