@@ -14,8 +14,8 @@ keywords = ["tree-sitter", "sqlite", "security", "cwe"]
 dependencies = [
   "tree-sitter>=0.25.1",
   "tree-sitter-language-pack>=0.9.0",
+  "GitPython"
   "unidiff",
-  "git"
 ]
 
 [project.urls]
