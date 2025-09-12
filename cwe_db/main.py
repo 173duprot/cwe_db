@@ -43,11 +43,9 @@ class CVE_DB:
 
     class CODE:
         def __init__(s,lang,code): s.lang,s.code=lang,code
-        def captures(s,q):
-            q=Query(s.lang,q); c=QueryCursor()
-            for _,n in c.captures(get_parser(s.lang).parse(s.code).root_node,q): yield n
+        def captures(s,q): return [n for _,n in QueryCursor(Query(s.lang,q)).captures(get_parser(s.lang).parse(s.code).root_node)]
         def strip(s,q):
-            for n in s.captures(q):
+            for _,n in QueryCursor(Query(s.lang,q)).captures(get_parser(s.lang).parse(s.code).root_node):
                 s0,e0=n.start_byte,n.end_byte
                 s.code=s.code[:s0]+b''.join((b'\n' if ch==10 else b' ')for ch in s.code[s0:e0])+s.code[e0:]
             return s
