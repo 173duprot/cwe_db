@@ -25,11 +25,11 @@ class CVE_DB:
                   for f in ET.parse(src).iter("file") if (flaws:=f.findall("flaw"))}
         # Files
         for f in Path(root).rglob("*"):
-            if not(f.is_file() and f.suffix in CVE_DB.PARSER.LANGS and f.name in manifest): continue # Valid
-            cve,lines=manifest[f.name]
+            if not(f.is_file() and f.suffix in CVE_DB.PARSER.LANGS and f.name in manifest): continue # is valid?
 
-            # Clean
-            code=CVE_DB.PARSER(f.suffix,f.read_bytes()).strip()
+            # Fetch
+            cve,lines=manifest[f.name]
+            code=CVE_DB.PARSER(f.suffix,f.read_bytes()).strip() # Clean
 
             # Record
             for n in code.captures("fn"): # Record
