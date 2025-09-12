@@ -24,11 +24,11 @@ class CVE_DB:
                   for f in ET.parse(src).iter("file") if (flaws:=f.findall("flaw"))}
         # Files
         for f in Path(root).rglob("*"):
-            if not(f.is_file() and f.suffix in CVE_DB.PARSER.LANGS and f.name in manifest): continue # is valid?
+            if not(f.is_file() and f.suffix in CVE_DB.CODE.LANGS and f.name in manifest): continue # is valid?
 
             # Fetch
             cve,lines=manifest[f.name]
-            code=CVE_DB.PARSER(f.suffix,f.read_bytes()).strip() # Clean
+            code=CVE_DB.CODE(f.suffix,f.read_bytes()).strip() # Clean
 
             # Record
             for n in code.captures("fn"): # Record
@@ -39,9 +39,9 @@ class CVE_DB:
                     (cve,f.name,s0,e0,",".join(vulns)if vulns else None,n.text.decode("utf-8","ignore")))
         return s
 
-    class PARSER:
+    class CODE:
         def __init__(s,ext,code):
-            s.lang,s.parser,s.fn,s.cmt=CVE_DB.PARSER.LANGS[ext]; s.code=code
+            s.lang,s.parser,s.fn,s.cmt=CVE_DB.CODE.LANGS[ext]; s.code=code
 
         def strip(s):
             for nodes in QueryCursor(Query(s.lang,s.cmt)).captures(s.parser.parse(s.code).root_node).values():
