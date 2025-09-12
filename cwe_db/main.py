@@ -41,14 +41,6 @@ class CVE_DB:
         return s
 
     class PARSER:
-        LANGS={ext:(get_language(l),get_parser(l),fn,cmt)for l,exts,fn,cmt in[
-            ('c',['.c','.h'],'(function_definition) @f','(comment) @c'),
-            ('cpp',['.cpp','.hpp','.cxx','.cc'],'(function_definition) @f','(comment) @c'),
-            ('java',['.java'],'(method_declaration) @f','[(line_comment)(block_comment)] @c'),
-            ('python',['.py'],'(function_definition) @f','(comment) @c'),
-            ('csharp',['.cs'],'(method_declaration) @f','(comment) @c')
-        ]for ext in exts}
-
         def __init__(s,ext,code):
             s.lang,s.parser,s.fn,s.cmt=CVE_DB.PARSER.LANGS[ext]; s.code=code
 
@@ -63,3 +55,11 @@ class CVE_DB:
             q={"fn":s.fn,"cmt":s.cmt}[which]
             for nodes in QueryCursor(Query(s.lang,q)).captures(s.parser.parse(s.code).root_node).values():
                 for n in nodes: yield n
+
+        LANGS={ext:(get_language(l),get_parser(l),fn,cmt)for l,exts,fn,cmt in[
+            ('c',['.c','.h'],'(function_definition) @f','(comment) @c'),
+            ('cpp',['.cpp','.hpp','.cxx','.cc'],'(function_definition) @f','(comment) @c'),
+            ('java',['.java'],'(method_declaration) @f','[(line_comment)(block_comment)] @c'),
+            ('python',['.py'],'(function_definition) @f','(comment) @c'),
+            ('csharp',['.cs'],'(method_declaration) @f','(comment) @c')
+        ]for ext in exts}
