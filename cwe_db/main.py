@@ -42,13 +42,6 @@ class CVE_DB:
         return s
 
     class CODE:
-        def __init__(s,lang,code): s.lang,s.code=lang,code
-        def captures(s,q): return [n for _,n in QueryCursor(Query(s.lang,q)).captures(get_parser(s.lang).parse(s.code).root_node)]
-        def strip(s,q):
-            for _,n in QueryCursor(Query(s.lang,q)).captures(get_parser(s.lang).parse(s.code).root_node):
-                s0,e0=n.start_byte,n.end_byte
-                s.code=s.code[:s0]+b''.join((b'\n' if ch==10 else b' ')for ch in s.code[s0:e0])+s.code[e0:]
-            return s
         LANGS={ext:(get_language(l),get_parser(l),fn,cmt)for l,exts,fn,cmt in[
          ('c',['.c','.h'],'(function_definition) @f','(comment) @c'),
          ('cpp',['.cpp','.hpp','.cxx','.cc'],'(function_definition) @f','(comment) @c'),
@@ -56,3 +49,10 @@ class CVE_DB:
          ('python',['.py'],'(function_definition) @f','(comment) @c'),
          ('csharp',['.cs'],'(method_declaration) @f','(comment) @c')
         ]for ext in exts}
+        def __init__(s,lang,code): s.lang,s.code=lang,code
+        def captures(s,q): return [n for _,n in QueryCursor(Query(s.lang,q)).captures(get_parser(s.lang).parse(s.code).root_node)]
+        def strip(s,q):
+            for _,n in QueryCursor(Query(s.lang,q)).captures(get_parser(s.lang).parse(s.code).root_node):
+                s0,e0=n.start_byte,n.end_byte
+                s.code=s.code[:s0]+b''.join((b'\n' if ch==10 else b' ')for ch in s.code[s0:e0])+s.code[e0:]
+            return s
