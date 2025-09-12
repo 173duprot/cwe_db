@@ -47,9 +47,10 @@ class CVE_DB:
             info = {k: v.strip('"') for k, v in info.items()}
             proj_info = dict(l.split("=", 1) for l in (p.parents[2] / "project.info").read_text().splitlines())
             proj_info = {k: v.strip('"') for k, v in proj_info.items()}
+            project_name = Path(info.get('pythonpath', p.parents[2].name)).parts[0]
 
             # Fetch
-            repo_path = Path(f"/tmp/{info['project_name']}")
+            repo_path = Path(f"/tmp/{project_name}")
             repo = Repo.clone_from(proj_info["github_url"], repo_path) if not repo_path.exists() else Repo(repo_path)
             repo.git.checkout(info["buggy_commit_id"])
 
@@ -62,7 +63,7 @@ class CVE_DB:
                     if any(h.target_start <= s_line <= h.target_start + h.target_length or s_line <= h.target_start <= e_line for h in f):
                         vuln_lines = ",".join({str(line.target_line_no) for h in f for line in h if (line.is_added or line.is_removed) and s_line <= line.target_line_no <= e_line})
                         s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
-                            (info["project_name"],f"{info['buggy_commit_id']}/{f.path}",s_line,e_line,vuln_lines if vuln_lines else None,n.text.decode("utf-8","ignore")))
+                            (project_name,f"{info['buggy_commit_id']}/{f.path}",s_line,e_line,vuln_lines if vuln_lines else None,n.text.decode("utf-8","ignore")))
         return s
 
     class CODE:
