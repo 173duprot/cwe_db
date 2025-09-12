@@ -43,25 +43,23 @@ class CVE_DB:
     def bugsinpy(s,src):
         # Extract
         for p in Path(src).rglob("bug.info"):
-            info = dict(l.split("=", 1) for l in p.read_text().splitlines())
-            info = {k: v.strip('"') for k, v in info.items()}
-            proj_info = dict(l.split("=", 1) for l in (p.parents[2] / "project.info").read_text().splitlines())
-            proj_info = {k: v.strip('"') for k, v in proj_info.items()}
-            project_name = Path(info.get('pythonpath', p.parents[2].name)).parts[0]
+            info={k:v.strip('"')for k,v in(map(lambda l:l.split("=",1),p.read_text().splitlines()))}
+            proj_info={k:v.strip('"')for k,v in(map(lambda l:l.split("=",1),(p.parents[2]/"project.info").read_text().splitlines()))}
+            project_name=Path(info["test_file"]).parts[0]
 
             # Fetch
-            repo_path = Path(f"/tmp/{project_name}")
-            repo = Repo.clone_from(proj_info["github_url"], repo_path) if not repo_path.exists() else Repo(repo_path)
+            repo_path=Path(f"/tmp/{project_name}")
+            repo=Repo.clone_from(proj_info["github_url"],repo_path)if not repo_path.exists()else Repo(repo_path)
             repo.git.checkout(info["buggy_commit_id"])
 
             # Record
-            for f in unidiff.PatchSet.from_filename(p.parent / "bug_patch.txt", encoding='utf-8'):
-                if not Path(f.path).suffix in CVE_DB.CODE.LANGS: continue
-                code = CVE_DB.CODE(Path(f.path).suffix, (repo_path / f.path).read_bytes()).strip()
+            for f in unidiff.PatchSet.from_filename(p.parent/"bug_patch.txt",encoding="utf-8"):
+                if Path(f.path).suffix not in CVE_DB.CODE.LANGS: continue
+                code=CVE_DB.CODE(Path(f.path).suffix,(repo_path/f.path).read_bytes()).strip()
                 for n in code.captures("fn"):
-                    s_line, e_line = n.start_point[0] + 1, n.end_point[0] + 1
-                    if any(h.target_start <= s_line <= h.target_start + h.target_length or s_line <= h.target_start <= e_line for h in f):
-                        vuln_lines = ",".join({str(line.target_line_no) for h in f for line in h if (line.is_added or line.is_removed) and s_line <= line.target_line_no <= e_line})
+                    s_line,e_line=n.start_point[0]+1,n.end_point[0]+1
+                    if any(h.target_start<=s_line<=h.target_start+h.target_length or s_line<=h.target_start<=e_line for h in f):
+                        vuln_lines=",".join({str(ln) for h in f for line in h if (ln:=line.target_line_no) and (line.is_added or line.is_removed) and s_line<=ln<=e_line})
                         s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
                             (project_name,f"{info['buggy_commit_id']}/{f.path}",s_line,e_line,vuln_lines if vuln_lines else None,n.text.decode("utf-8","ignore")))
         return s
