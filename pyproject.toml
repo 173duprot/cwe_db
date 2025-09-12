@@ -13,7 +13,7 @@ authors = [{name = "Wren"}]
 keywords = ["tree-sitter", "sqlite", "security", "cwe", "juliet"]
 dependencies = [
   "tree-sitter>=0.25.1",
-  "tree_sitter_language_pack>=0.9.0"
+  "tree-sitter-language-pack>=0.9.0"
 ]
 
 [project.urls]
