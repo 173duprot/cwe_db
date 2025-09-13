@@ -7,7 +7,7 @@ from tree_sitter_language_pack import get_language, get_parser
 class CVE_DB:
     def __init__(s,db):
         s.db=sqlite3.connect(db); s.cur=s.db.cursor()
-        s.cur.execute("CREATE TABLE IF NOT EXISTS funcs (cve TEXT,file TEXT,start INT,end INT,vuln TEXT,code TEXT,PRIMARY KEY(cve,file))")
+        s.cur.execute("CREATE TABLE IF NOT EXISTS funcs (group TEXT,id TEXT,start INT,end INT,vuln TEXT,code TEXT,PRIMARY KEY(cve,file))")
     def commit(s): s.db.commit(); return s
     def close(s): s.db.close()
 
