@@ -59,11 +59,10 @@ class CVE_DB:
                 if Path(f.path).suffix not in CVE_DB.CODE.LANGS: continue
                 code=CVE_DB.CODE(Path(f.path).suffix,(repo_path/f.path).read_bytes()).strip()
                 for n in code.captures("fn"):
-                    s_line,e_line=n.start_point[0]+1,n.end_point[0]+1
-                    if any(h.target_start<=s_line<=h.target_start+h.target_length or s_line<=h.target_start<=e_line for h in f):
-                        vuln_lines=",".join({str(ln) for h in f for line in h if (ln:=line.target_line_no) and (line.is_added or line.is_removed) and s_line<=ln<=e_line})
-                        s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
-                            (project_name,f"{info['buggy_commit_id']}/{f.path}",s_line,e_line,vuln_lines if vuln_lines else None,n.text.decode("utf-8","ignore")))
+                    s0,e0=n.start_point[0]+1,n.end_point[0]+1
+                    vuln=any(h.target_start<=s0<=h.target_start+h.target_length or s0<=h.target_start<=e0 for h in f)
+                    s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
+                        (project_name,f"{info['buggy_commit_id']}/{f.path}",s0,e0,"1" if vuln else "0",n.text.decode("utf-8","ignore")))
         return s
 
     class CODE:
