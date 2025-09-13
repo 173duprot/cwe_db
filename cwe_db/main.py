@@ -45,17 +45,13 @@ class CVE_DB:
         for p in Path(src).rglob("bug.info"):
             info={k:v.strip().strip('"') for k,v in (l.split("=",1) for l in p.read_text().splitlines())}
             proj_info={k:v.strip().strip('"') for k,v in (l.split("=",1) for l in (p.parents[2]/"project.info").read_text().splitlines())}
-            project_name=Path(info["test_file"]).parts[0]
+            project_name=proj_info["github_url"]
 
             # Fetch
-            repo_path=Path(f"/tmp/{project_name}")
+            repo_path=Path(f"/tmp/{project_name.split('/')[-1]}")
             repo=Repo.clone_from(proj_info["github_url"],repo_path)if not repo_path.exists()else Repo(repo_path)
-            try:
-                print("Checking out commit:", repr(info["buggy_commit_id"]))
-                repo.git.checkout(info["buggy_commit_id"])
-            except Exception as e:
-                print(f"[!] Failed to checkout {info['buggy_commit_id']} for {project_name}: {e}")
-                continue  # Skip this project if checkout fails
+            try: repo.git.checkout(info["buggy_commit_id"]); print(project_name,info["buggy_commit_id"],"ok")
+            except: print(project_name,info["buggy_commit_id"],"fail"); continue
 
             # Record
             for f in unidiff.PatchSet.from_filename(p.parent/"bug_patch.txt",encoding="utf-8"):
