@@ -45,11 +45,12 @@ class CVE_DB:
         for p in Path(src).rglob("bug.info"):
             info={k:v.strip().strip('"') for k,v in (l.split("=",1) for l in p.read_text().splitlines())}
             proj_info={k:v.strip().strip('"') for k,v in (l.split("=",1) for l in (p.parents[2]/"project.info").read_text().splitlines())}
-            project_name=proj_info["github_url"]
+            project_name=Path(proj_info["github_url"]).stem
 
             # Fetch
-            repo_path=Path(f"/tmp/{project_name.split('/')[-1]}")
-            repo=Repo.clone_from(proj_info["github_url"],repo_path)if not repo_path.exists()else Repo(repo_path)
+            repo_path=Path(f"/tmp/{project_name}")
+            try: repo=Repo.clone_from(proj_info["github_url"],repo_path)
+            except: repo=Repo(repo_path)
             try: repo.git.checkout(info["buggy_commit_id"]); print(project_name,info["buggy_commit_id"],"ok")
             except: print(project_name,info["buggy_commit_id"],"fail"); continue
 
