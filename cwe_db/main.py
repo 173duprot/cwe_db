@@ -78,7 +78,8 @@ class CVE_DB:
 
         def captures(s,which):
             q={"fn":s.fn,"cmt":s.cmt}[which]
-            return QueryCursor(Query(s.lang,q)).captures(s.parser.parse(s.code).root_node).values():
+            for nodes in QueryCursor(Query(s.lang,q)).captures(s.parser.parse(s.code).root_node).values():
+                for n in nodes: yield n
 
         LANGS={ext:(get_language(l),get_parser(l),fn,cmt)for l,exts,fn,cmt in[
             ('c',['.c','.h'],'(function_definition) @f','(comment) @c'),
