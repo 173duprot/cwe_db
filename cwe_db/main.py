@@ -43,8 +43,8 @@ class CVE_DB:
     def bugsinpy(s,src):
         # Extract
         for p in Path(src).rglob("bug.info"):
-            info={k:v.strip().strip('"').strip("'") for k,v in (l.split("=",1) for l in p.read_text().splitlines())}
-            proj_info={k:v.strip().strip('"').strip("'") for k,v in (l.split("=",1) for l in (p.parents[2]/"project.info").read_text().splitlines())}
+            info={k:v.strip().strip('"') for k,v in (l.split("=",1) for l in p.read_text().splitlines())}
+            proj_info={k:v.strip().strip('"') for k,v in (l.split("=",1) for l in (p.parents[2]/"project.info").read_text().splitlines())}
             project_name=Path(proj_info["github_url"]).stem
 
             # Fetch
