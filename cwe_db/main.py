@@ -29,10 +29,10 @@ class CVE_DB:
 
             # Fetch
             cve,lines=manifest[f.name]
-            code=CVE_DB.CODE(f.suffix,f.read_bytes()).strip() # Clean
+            code=CVE_DB.CODE(f).strip(CVE_DB.CODE.LANGS[f.suffix][3]) # strip comments
 
             # Record
-            for n in code.captures("fn"): # Record
+            for n in code.query(code.fn): # functions
                 s0,e0=n.start_point[0]+1,n.end_point[0]+1
                 if e0-s0+1<min_lines: continue
                 vulns=[str(l-(s0-1))for l in lines if s0<=l<=e0]
@@ -57,8 +57,8 @@ class CVE_DB:
             # Record
             for f in unidiff.PatchSet.from_filename(p.parent/"bug_patch.txt",encoding="utf-8"):
                 if Path(f.path).suffix not in CVE_DB.CODE.LANGS: continue
-                code=CVE_DB.CODE(Path(f.path).suffix,(repo_path/f.path).read_bytes()).strip()
-                for n in code.captures("fn"):
+                code=CVE_DB.CODE(repo_path/f.path).strip(CVE_DB.CODE.LANGS[Path(f.path).suffix][3])
+                for n in code.query(code.fn):
                     s0,e0=n.start_point[0]+1,n.end_point[0]+1
                     vuln=any(h.target_start<=s0<=h.target_start+h.target_length or s0<=h.target_start<=e0 for h in f)
                     s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
@@ -66,21 +66,15 @@ class CVE_DB:
         return s
 
     class CODE:
-        def __init__(s,ext,code):
-            s.lang,s.parser,s.fn,s.cmt=CVE_DB.CODE.LANGS[ext]; s.code=code
-
-        def strip(s):
-            for nodes in QueryCursor(Query(s.lang,s.cmt)).captures(s.parser.parse(s.code).root_node).values():
-                for n in nodes:
-                    s0,e0=n.start_byte,n.end_byte
-                    s.code=s.code[:s0]+bytes((ch if ch==10 else 32)for ch in s.code[s0:e0])+s.code[e0:]
+        def __init__(s,path):
+            ext=Path(path).suffix; s.lang,s.parser,s.fn,s.cmt=CVE_DB.CODE.LANGS[ext]; s.code=Path(path).read_bytes()
+        def query(s,q):
+            return (n for v in QueryCursor(Query(s.lang,q)).captures(s.parser.parse(s.code).root_node).values() for n in v)
+        def strip(s,q):
+            for n in s.query(q):
+                a,b=n.start_byte,n.end_byte
+                s.code=s.code[:a]+bytes((c if c==10 else 32)for c in s.code[a:b])+s.code[b:]
             return s
-
-        def captures(s,which):
-            q={"fn":s.fn,"cmt":s.cmt}[which]
-            for nodes in QueryCursor(Query(s.lang,q)).captures(s.parser.parse(s.code).root_node).values():
-                for n in nodes: yield n
-
         LANGS={ext:(get_language(l),get_parser(l),fn,cmt)for l,exts,fn,cmt in[
             ('c',['.c','.h'],'(function_definition) @f','(comment) @c'),
             ('cpp',['.cpp','.hpp','.cxx','.cc'],'(function_definition) @f','(comment) @c'),
