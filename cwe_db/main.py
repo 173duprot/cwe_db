@@ -72,7 +72,8 @@ class CVE_DB:
             s.lang,s.parser,s.fn,s.cmt=CVE_DB.CODE.LANGS[ext]; s.code=code
 
         def query(s,q):
-            return QueryCursor(Query(s.lang,q)).captures(s.parser.parse(s.code).root_node).values()
+            for nodes in QueryCursor(Query(s.lang,q)).captures(s.parser.parse(s.code).root_node).values():
+                for n in nodes: yield n
 
         def strip(s,n):
             s.code=(
