@@ -19,28 +19,35 @@ class CVE_DB:
                     (x["project"],x["commit_id"],None,None,str(x["target"]),x["func"])) # Record
         return s
 
-    def juliet(s,src,root,min_lines=6):
-        # Extract
-        manifest={f.get("path"):(flaws[0].get("name"),[int(n.get("line"))for n in flaws if n.get("line")])
-                  for f in ET.parse(src).iter("file") if (flaws:=f.findall("flaw"))}
+    def juliet(s,src,min_lines=6):
         # Files
-        for f in Path(root).rglob("*"):
-            if not(f.is_file() and f.suffix in CVE_DB.CODE.LANGS and f.name in manifest): continue # is valid?
+        for f in Path(src).rglob("*"):
+            if not(f.is_file() and f.suffix in CVE_DB.CODE.LANGS): continue
 
-            # Fetch
-            cve,lines=manifest[f.name]
+            # Extract
+            cve=f.stem.split("_",1)[0] if "_" in f.stem else f.stem
             code=CVE_DB.CODE(f.suffix,f.read_bytes())
 
-            # Clean
-            for n in code.query(code.cmt): code.strip(n)
+            # Find
+            flaw_lines=set()
+            for n in code.query(code.cmt):
+                txt=n.text.decode("utf-8","ignore")
+                if "POTENTIAL FLAW" in txt:
+                    # look ahead: next sibling node
+                    sib=n.next_named_sibling or n.parent.next_named_sibling
+                    if sib:
+                        s0,e0=sib.start_point[0]+1,sib.end_point[0]+1
+                        flaw_lines.update(range(s0,e0+1))
+                code.strip(n) # clean
 
             # Record
-            for n in code.query(code.fn): # Record
+            for n in code.query(code.fn):
                 s0,e0=n.start_point[0]+1,n.end_point[0]+1
                 if e0-s0+1<min_lines: continue
-                vulns=[str(l-(s0-1))for l in lines if s0<=l<=e0]
+                vulns=[str(l-(s0-1))for l in flaw_lines if s0<=l<=e0]
                 s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
-                    (cve,f.name,s0,e0,",".join(vulns)if vulns else None,n.text.decode("utf-8","ignore")))
+                    (cve,f.name,s0,e0,",".join(vulns) if vulns else None,
+                     n.text.decode("utf-8","ignore")))
         return s
 
     def bugsinpy(s,src):
