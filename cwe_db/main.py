@@ -30,7 +30,9 @@ class CVE_DB:
             # Fetch
             cve,lines=manifest[f.name]
             code=CVE_DB.CODE(f.suffix,f.read_bytes())
-            for n in code.query(code.cmt): code.strip(n) # Clean
+
+            # Clean
+            for n in code.query(code.cmt): code.strip(n)
 
             # Record
             for n in code.query(code.fn): # Record
@@ -48,18 +50,22 @@ class CVE_DB:
             proj_info={k:v.strip().strip('"') for k,v in (l.split("=",1) for l in (p.parents[2]/"project.info").read_text().splitlines())}
             project_name=Path(proj_info["github_url"]).stem
 
-            # Fetch
+            # Clone
             repo_path=Path(f"/tmp/{project_name}")
             try: repo=Repo.clone_from(proj_info["github_url"],repo_path)
             except: repo=Repo(repo_path) if repo_path.exists() else (print(project_name,"clone fail") or None)
             try: repo.git.checkout(info["buggy_commit_id"]); print(project_name,info["buggy_commit_id"],"ok")
             except: print(project_name,info["buggy_commit_id"],"fail"); continue
 
-            # Record
+            # Files
             for f in unidiff.PatchSet.from_filename(p.parent/"bug_patch.txt",encoding="utf-8"):
                 if Path(f.path).suffix not in CVE_DB.CODE.LANGS: continue
                 code=CVE_DB.CODE(Path(f.path).suffix,(repo_path/f.path).read_bytes())
-                for n in code.query(code.cmt): code.strip(n) # Clean
+
+                # Clean
+                for n in code.query(code.cmt): code.strip(n)
+
+                # Record
                 for n in code.query(code.fn):
                     s0,e0=n.start_point[0]+1,n.end_point[0]+1
                     vuln=any(h.target_start<=s0<=h.target_start+h.target_length or s0<=h.target_start<=e0 for h in f)
