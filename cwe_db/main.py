@@ -31,15 +31,14 @@ class CVE_DB:
             # Find
             flaw_lines=set()
             for n in code.query(code.cmt):
-                txt=n.text.decode("utf-8","ignore")
-                if "POTENTIAL FLAW" in txt:
-                    sib=n
-                    while sib:
-                        sib=sib.next_named_sibling or sib.parent.next_named_sibling
-                        if sib and sib.type!="comment": break
+                comment=n.text.decode("utf-8","ignore")
+                if "POTENTIAL FLAW" in comment:
+                    sib = n.next_named_sibling
+                    while sib and sib.type == "comment":
+                        sib = sib.next_named_sibling
                     if sib:
-                        s0,e0=sib.start_point[0]+1,sib.end_point[0]+1
-                        flaw_lines.update(range(s0,e0+1))
+                        s0, e0 = sib.start_point[0] + 1, sib.end_point[0] + 1
+                        flaw_lines.update(range(s0, e0 + 1))
                 code.strip(n) # clean
 
             # Record
