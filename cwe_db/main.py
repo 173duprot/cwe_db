@@ -33,8 +33,10 @@ class CVE_DB:
             for n in code.query(code.cmt):
                 txt=n.text.decode("utf-8","ignore")
                 if "POTENTIAL FLAW" in txt:
-                    # look ahead: next sibling node
-                    sib=n.next_named_sibling or n.parent.next_named_sibling
+                    sib=n
+                    while sib:
+                        sib=sib.next_named_sibling or sib.parent.next_named_sibling
+                        if sib and sib.type!="comment": break
                     if sib:
                         s0,e0=sib.start_point[0]+1,sib.end_point[0]+1
                         flaw_lines.update(range(s0,e0+1))
