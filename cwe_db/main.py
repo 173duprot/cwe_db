@@ -33,7 +33,7 @@ class CVE_DB:
             flaw_lines=set()
             for n in code.query(code.cmt):
                 comment=n.text.decode("utf-8","ignore")
-                if "POTENTIAL FLAW" in comment:
+                if "FLAW" in comment:
                     sib = n.next_named_sibling
                     while sib and sib.type == "comment":
                         sib = sib.next_named_sibling
