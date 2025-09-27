@@ -7,7 +7,7 @@ from tree_sitter_language_pack import get_language, get_parser
 class CVE_DB:
     def __init__(s,db):
         s.db=sqlite3.connect(db); s.cur=s.db.cursor()
-        s.cur.execute("CREATE TABLE IF NOT EXISTS funcs (grp TEXT,id TEXT,start INT,end INT,vuln TEXT,code TEXT,PRIMARY KEY(grp,id,vuln))")
+        s.cur.execute("CREATE TABLE IF NOT EXISTS funcs (grp TEXT,id TEXT,start INT,end INT,vuln TEXT,code TEXT,len INT)")
     def commit(s): s.db.commit(); return s
     def close(s): s.db.close()
 
@@ -15,8 +15,9 @@ class CVE_DB:
         # Extract
         for x in json.load(open(src)):
             if all(k in x for k in ("project","commit_id","target","func")):
-                s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
-                    (x["project"],x["commit_id"],None,None,str(x["target"]),x["func"])) # Record
+                code = str(x["target"]),x["func"])
+                s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?,?)",
+                    (x["project"],x["commit_id"],None,None,code,len(code)) # Record
         return s
 
     def juliet(s,src,min_lines=6):
