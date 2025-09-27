@@ -15,9 +15,9 @@ class CVE_DB:
         # Extract
         for x in json.load(open(src)):
             if all(k in x for k in ("project","commit_id","target","func")):
-                code = str(x["target"]),x["func"])
+                func=x["func"]
                 s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?,?)",
-                    (x["project"],x["commit_id"],None,None,code,len(code)) # Record
+                    (x["project"],x["commit_id"],None,None,str(x["target"]),func,len(func.splitlines()))) # Record
         return s
 
     def juliet(s,src,min_lines=6):
@@ -47,9 +47,10 @@ class CVE_DB:
                 s0,e0=n.start_point[0]+1,n.end_point[0]+1
                 if e0-s0+1<min_lines: continue
                 vulns=[str(l-(s0-1))for l in flaw_lines if s0<=l<=e0]
-                s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
+                func=n.text.decode("utf-8","ignore")
+                s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?,?)",
                     (cve,f.name,s0,e0,",".join(vulns) if vulns else None,
-                     n.text.decode("utf-8","ignore")))
+                     func,len(func.splitlines())))
         return s
 
     def bugsinpy(s,src):
@@ -78,8 +79,9 @@ class CVE_DB:
                 for n in code.query(code.fn):
                     s0,e0=n.start_point[0]+1,n.end_point[0]+1
                     vuln=any(h.target_start<=s0<=h.target_start+h.target_length or s0<=h.target_start<=e0 for h in f)
-                    s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?)",
-                        (project_name,f"{info['buggy_commit_id']}/{f.path}",s0,e0,"1" if vuln else "0",n.text.decode("utf-8","ignore")))
+                    func=n.text.decode("utf-8","ignore")
+                    s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?,?)",
+                        (project_name,f"{info['buggy_commit_id']}/{f.path}",s0,e0,"1" if vuln else "0",func,len(func.splitlines())))
         return s
 
     class CODE:
