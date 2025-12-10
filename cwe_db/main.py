@@ -84,6 +84,22 @@ class CVE_DB:
                         (project_name,f"{info['buggy_commit_id']}/{f.path}",s0,e0,"1" if vuln else "0",func,len(func.splitlines())))
         return s
 
+    def simhash(s,k=3):
+        import hashlib
+        def _h(c):
+            v=[0]*64
+            for w in c.split():
+                d=int(hashlib.md5(w.encode()).hexdigest(),16)
+                for i in range(64):v[i]+=1 if (d>>i)&1 else -1
+            return sum(1<<i for i in range(64) if v[i]>0)
+        seen,rm=[],[]
+        for r,c in s.cur.execute("SELECT rowid,code FROM funcs").fetchall():
+            h=_h(c)
+            if any((h^x).bit_count()<=k for x in seen): rm.append(r)
+            else: seen.append(h)
+        if rm: s.cur.execute(f"DELETE FROM funcs WHERE rowid IN ({','.join(map(str,rm))})")
+        return s.commit()
+
     class CODE:
         def __init__(s,ext,code):
             s.lang,s.parser,s.fn,s.cmt=CVE_DB.CODE.LANGS[ext]; s.code=code
