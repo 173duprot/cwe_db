@@ -110,7 +110,7 @@ db.close()
 4. **Fingerprint generation**: Final hash has bit set if accumulated value > 0
 5. **Similarity detection**: Functions with Hamming distance ≤ k are considered duplicates
 
-The algorithm runs in O(n) time and provides approximate similarity detection suitable for large datasets. Lower k values (1-3) catch near-exact duplicates, while higher values (4-8) catch more semantic similarity.
+Lower k values (1-3) catch near-exact duplicates, while higher values (4-8) catch more semantic similarity. The compact 64-bit fingerprints enable efficient pairwise comparison even on large datasets.
 
 ### Chaining Operations
 
