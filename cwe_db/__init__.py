@@ -1,2 +1,2 @@
-from .main import CVE_DB
-__all__ = ["CVE_DB"]
+from .main import CWE_DB
+__all__ = ["CWE_DB"]

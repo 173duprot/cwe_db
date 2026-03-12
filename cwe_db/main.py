@@ -4,7 +4,7 @@ from pathlib import Path
 from tree_sitter import Query, QueryCursor
 from tree_sitter_language_pack import get_language, get_parser
 
-class CVE_DB:
+class CWE_DB:
     def __init__(s,db):
         s.db=sqlite3.connect(db); s.cur=s.db.cursor()
         s.cur.execute("CREATE TABLE IF NOT EXISTS funcs (grp TEXT,id TEXT,start INT,end INT,vuln TEXT,code TEXT,len INT)")
@@ -23,11 +23,11 @@ class CVE_DB:
     def juliet(s,src,min_lines=6):
         # Files
         for f in Path(src).rglob("*"):
-            if not(f.is_file() and f.suffix in CVE_DB.CODE.LANGS): continue
+            if not(f.is_file() and f.suffix in CWE_DB.CODE.LANGS): continue
 
             # Extract
             cve=f.stem.split("_",1)[0] if "_" in f.stem else f.stem
-            code=CVE_DB.CODE(f.suffix,f.read_bytes())
+            code=CWE_DB.CODE(f.suffix,f.read_bytes())
 
             # Find
             flaw_lines=set()
@@ -69,8 +69,8 @@ class CVE_DB:
 
             # Files
             for f in unidiff.PatchSet.from_filename(p.parent/"bug_patch.txt",encoding="utf-8"):
-                if Path(f.path).suffix not in CVE_DB.CODE.LANGS: continue
-                code=CVE_DB.CODE(Path(f.path).suffix,(repo_path/f.path).read_bytes())
+                if Path(f.path).suffix not in CWE_DB.CODE.LANGS: continue
+                code=CWE_DB.CODE(Path(f.path).suffix,(repo_path/f.path).read_bytes())
 
                 # Clean
                 for n in code.query(code.cmt): code.strip(n)
