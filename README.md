@@ -173,11 +173,3 @@ CREATE TABLE funcs (
 ## License
 
 GPL-3.0
-
-## Citation
-
-If you use this tool in your research, please cite the relevant datasets:
-
-- **Juliet Test Suite**: NIST Software Assurance Reference Dataset
-- **Devign**: Zhou et al., "Devign: Effective Vulnerability Identification by Learning Comprehensive Program Semantics via Graph Neural Networks"
-- **BugsInPy**: Widyasari et al., "BugsInPy: A Database of Existing Bugs in Python Programs"

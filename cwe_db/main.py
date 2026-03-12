@@ -1,125 +1,274 @@
-import sqlite3, json, unidiff, xml.etree.ElementTree as ET
+import sqlite3
+import json
+import unidiff
+import xml.etree.ElementTree as ET
 from git import Repo
 from pathlib import Path
 from tree_sitter import Query, QueryCursor
 from tree_sitter_language_pack import get_language, get_parser
 
+
 class CWE_DB:
-    def __init__(s,db):
-        s.db=sqlite3.connect(db); s.cur=s.db.cursor()
-        s.cur.execute("CREATE TABLE IF NOT EXISTS funcs (grp TEXT,id TEXT,start INT,end INT,vuln TEXT,code TEXT,len INT)")
-    def commit(s): s.db.commit(); return s
-    def close(s): s.db.close()
+    def __init__(self, db):
+        self.db = sqlite3.connect(db)
+        self.cur = self.db.cursor()
+        self.cur.execute("""
+            CREATE TABLE IF NOT EXISTS funcs (
+                grp TEXT,
+                id TEXT,
+                start INT,
+                end INT,
+                vuln TEXT,
+                code TEXT,
+                len INT
+            )
+        """)
 
-    def devign(s,src):
-        # Extract
-        for x in json.load(open(src)):
-            if all(k in x for k in ("project","commit_id","target","func")):
-                func=x["func"]
-                s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?,?)",
-                    (x["project"],x["commit_id"],None,None,str(x["target"]),func,len(func.splitlines()))) # Record
-        return s
+    def commit(self):
+        self.db.commit()
+        return self
 
-    def juliet(s,src,min_lines=6):
-        # Files
-        for f in Path(src).rglob("*"):
-            if not(f.is_file() and f.suffix in CWE_DB.CODE.LANGS): continue
+    def close(self):
+        self.db.close()
 
-            # Extract
-            cve=f.stem.split("_",1)[0] if "_" in f.stem else f.stem
-            code=CWE_DB.CODE(f.suffix,f.read_bytes())
+    def devign(self, src):
+        """Load Devign dataset from JSON file."""
+        data = json.load(open(src))
+        
+        for entry in data:
+            required_keys = ("project", "commit_id", "target", "func")
+            if not all(key in entry for key in required_keys):
+                continue
+            
+            func = entry["func"]
+            self.cur.execute(
+                "INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?,?)",
+                (
+                    entry["project"],
+                    entry["commit_id"],
+                    None,
+                    None,
+                    str(entry["target"]),
+                    func,
+                    len(func.splitlines())
+                )
+            )
+        
+        return self
 
-            # Find
-            flaw_lines=set()
-            for n in code.query(code.cmt):
-                comment=n.text.decode("utf-8","ignore")
+    def juliet(self, src, min_lines=6):
+        """Load Juliet test suite, extracting functions with FLAW comments."""
+        for file_path in Path(src).rglob("*"):
+            if not (file_path.is_file() and file_path.suffix in CWE_DB.CODE.LANGS):
+                continue
+
+            cve = file_path.stem.split("_", 1)[0] if "_" in file_path.stem else file_path.stem
+            code = CWE_DB.CODE(file_path.suffix, file_path.read_bytes())
+
+            # Find lines marked with FLAW comments
+            flaw_lines = set()
+            for node in code.query(code.cmt):
+                comment = node.text.decode("utf-8", "ignore")
+                
                 if "FLAW" in comment:
-                    sib = n.next_named_sibling
-                    while sib and sib.type == "comment":
-                        sib = sib.next_named_sibling
-                    if sib:
-                        s0, e0 = sib.start_point[0] + 1, sib.end_point[0] + 1
-                        flaw_lines.update(range(s0, e0 + 1))
-                code.strip(n) # clean
+                    # Find the next non-comment sibling
+                    sibling = node.next_named_sibling
+                    while sibling and sibling.type == "comment":
+                        sibling = sibling.next_named_sibling
+                    
+                    if sibling:
+                        start_line = sibling.start_point[0] + 1
+                        end_line = sibling.end_point[0] + 1
+                        flaw_lines.update(range(start_line, end_line + 1))
+                
+                code.strip(node)
 
-            # Record
-            for n in code.query(code.fn):
-                s0,e0=n.start_point[0]+1,n.end_point[0]+1
-                if e0-s0+1<min_lines: continue
-                vulns=[str(l-(s0-1))for l in flaw_lines if s0<=l<=e0]
-                func=n.text.decode("utf-8","ignore")
-                s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?,?)",
-                    (cve,f.name,s0,e0,",".join(vulns) if vulns else None,
-                     func,len(func.splitlines())))
-        return s
+            # Extract functions and record them
+            for node in code.query(code.fn):
+                start_line = node.start_point[0] + 1
+                end_line = node.end_point[0] + 1
+                
+                if end_line - start_line + 1 < min_lines:
+                    continue
+                
+                # Find which flaw lines are within this function
+                vulns = [
+                    str(line - (start_line - 1))
+                    for line in flaw_lines
+                    if start_line <= line <= end_line
+                ]
+                
+                func = node.text.decode("utf-8", "ignore")
+                self.cur.execute(
+                    "INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?,?)",
+                    (
+                        cve,
+                        file_path.name,
+                        start_line,
+                        end_line,
+                        ",".join(vulns) if vulns else None,
+                        func,
+                        len(func.splitlines())
+                    )
+                )
+        
+        return self
 
-    def bugsinpy(s,src):
-        # Extract
-        for p in Path(src).rglob("bug.info"):
-            info={k:v.strip().strip('"') for k,v in (l.split("=",1) for l in p.read_text().splitlines())}
-            proj_info={k:v.strip().strip('"') for k,v in (l.split("=",1) for l in (p.parents[2]/"project.info").read_text().splitlines())}
-            project_name=Path(proj_info["github_url"]).stem
+    def bugsinpy(self, src):
+        """Load BugsInPy dataset by cloning repos and analyzing patches."""
+        for bug_info_path in Path(src).rglob("bug.info"):
+            # Parse bug.info file
+            info = {
+                key: value.strip().strip('"')
+                for key, value in (
+                    line.split("=", 1)
+                    for line in bug_info_path.read_text().splitlines()
+                )
+            }
+            
+            # Parse project.info file
+            project_info_path = bug_info_path.parents[2] / "project.info"
+            proj_info = {
+                key: value.strip().strip('"')
+                for key, value in (
+                    line.split("=", 1)
+                    for line in project_info_path.read_text().splitlines()
+                )
+            }
+            
+            project_name = Path(proj_info["github_url"]).stem
+            repo_path = Path(f"/tmp/{project_name}")
 
-            # Clone
-            repo_path=Path(f"/tmp/{project_name}")
-            try: repo=Repo.clone_from(proj_info["github_url"],repo_path)
-            except: repo=Repo(repo_path) if repo_path.exists() else (print(project_name,"clone fail") or None)
-            try: repo.git.checkout(info["buggy_commit_id"]); print(project_name,info["buggy_commit_id"],"ok")
-            except: print(project_name,info["buggy_commit_id"],"fail"); continue
+            # Clone or reuse repository
+            try:
+                repo = Repo.clone_from(proj_info["github_url"], repo_path)
+            except:
+                if repo_path.exists():
+                    repo = Repo(repo_path)
+                else:
+                    print(project_name, "clone fail")
+                    continue
+            
+            # Checkout buggy commit
+            try:
+                repo.git.checkout(info["buggy_commit_id"])
+                print(project_name, info["buggy_commit_id"], "ok")
+            except:
+                print(project_name, info["buggy_commit_id"], "fail")
+                continue
 
-            # Files
-            for f in unidiff.PatchSet.from_filename(p.parent/"bug_patch.txt",encoding="utf-8"):
-                if Path(f.path).suffix not in CWE_DB.CODE.LANGS: continue
-                code=CWE_DB.CODE(Path(f.path).suffix,(repo_path/f.path).read_bytes())
+            # Process patch file
+            patch_path = bug_info_path.parent / "bug_patch.txt"
+            patch_set = unidiff.PatchSet.from_filename(patch_path, encoding="utf-8")
+            
+            for patched_file in patch_set:
+                if Path(patched_file.path).suffix not in CWE_DB.CODE.LANGS:
+                    continue
+                
+                file_path = repo_path / patched_file.path
+                code = CWE_DB.CODE(Path(patched_file.path).suffix, file_path.read_bytes())
 
-                # Clean
-                for n in code.query(code.cmt): code.strip(n)
+                # Remove comments
+                for node in code.query(code.cmt):
+                    code.strip(node)
 
-                # Record
-                for n in code.query(code.fn):
-                    s0,e0=n.start_point[0]+1,n.end_point[0]+1
-                    vuln=any(h.target_start<=s0<=h.target_start+h.target_length or s0<=h.target_start<=e0 for h in f)
-                    func=n.text.decode("utf-8","ignore")
-                    s.cur.execute("INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?,?)",
-                        (project_name,f"{info['buggy_commit_id']}/{f.path}",s0,e0,"1" if vuln else "0",func,len(func.splitlines())))
-        return s
+                # Extract functions and check if they overlap with patch hunks
+                for node in code.query(code.fn):
+                    start_line = node.start_point[0] + 1
+                    end_line = node.end_point[0] + 1
+                    
+                    # Check if function overlaps with any hunk in the patch
+                    vuln = any(
+                        hunk.target_start <= start_line <= hunk.target_start + hunk.target_length
+                        or start_line <= hunk.target_start <= end_line
+                        for hunk in patched_file
+                    )
+                    
+                    func = node.text.decode("utf-8", "ignore")
+                    self.cur.execute(
+                        "INSERT OR REPLACE INTO funcs VALUES (?,?,?,?,?,?,?)",
+                        (
+                            project_name,
+                            f"{info['buggy_commit_id']}/{patched_file.path}",
+                            start_line,
+                            end_line,
+                            "1" if vuln else "0",
+                            func,
+                            len(func.splitlines())
+                        )
+                    )
+        
+        return self
 
-    def simhash(s,k=3):
+    def simhash(self, k=3):
+        """Remove near-duplicate functions using simhash with Hamming distance."""
         import hashlib
-        def _h(c):
-            v=[0]*64
-            for w in c.split():
-                d=int(hashlib.md5(w.encode()).hexdigest(),16)
-                for i in range(64):v[i]+=1 if (d>>i)&1 else -1
-            return sum(1<<i for i in range(64) if v[i]>0)
-        seen,rm=[],[]
-        for r,c in s.cur.execute("SELECT rowid,code FROM funcs").fetchall():
-            h=_h(c)
-            if any((h^x).bit_count()<=k for x in seen): rm.append(r)
-            else: seen.append(h)
-        if rm: s.cur.execute(f"DELETE FROM funcs WHERE rowid IN ({','.join(map(str,rm))})")
-        return s.commit()
+        
+        def compute_hash(code):
+            """Compute 64-bit simhash for code."""
+            vector = [0] * 64
+            
+            for word in code.split():
+                digest = int(hashlib.md5(word.encode()).hexdigest(), 16)
+                for i in range(64):
+                    vector[i] += 1 if (digest >> i) & 1 else -1
+            
+            return sum(1 << i for i in range(64) if vector[i] > 0)
+        
+        seen = []
+        to_remove = []
+        
+        for rowid, code in self.cur.execute("SELECT rowid, code FROM funcs").fetchall():
+            hash_value = compute_hash(code)
+            
+            # Check if similar to any seen hash (Hamming distance <= k)
+            if any((hash_value ^ seen_hash).bit_count() <= k for seen_hash in seen):
+                to_remove.append(rowid)
+            else:
+                seen.append(hash_value)
+        
+        if to_remove:
+            placeholders = ",".join(map(str, to_remove))
+            self.cur.execute(f"DELETE FROM funcs WHERE rowid IN ({placeholders})")
+        
+        return self.commit()
 
     class CODE:
-        def __init__(s,ext,code):
-            s.lang,s.parser,s.fn,s.cmt=CVE_DB.CODE.LANGS[ext]; s.code=code
+        """Helper class for parsing code files with tree-sitter."""
+        
+        def __init__(self, ext, code):
+            self.lang, self.parser, self.fn, self.cmt = CWE_DB.CODE.LANGS[ext]
+            self.code = code
 
-        def query(s,q):
-            for nodes in QueryCursor(Query(s.lang,q)).captures(s.parser.parse(s.code).root_node).values():
-                for n in nodes: yield n
+        def query(self, query_string):
+            """Execute a tree-sitter query and yield matching nodes."""
+            query = Query(self.lang, query_string)
+            cursor = QueryCursor(query)
+            tree = self.parser.parse(self.code)
+            captures = cursor.captures(tree.root_node)
+            
+            for nodes in captures.values():
+                for node in nodes:
+                    yield node
 
-        def strip(s,n):
-            s.code=(
-                s.code[:n.start_byte]
-                +bytes((ch if ch==10 else 32)for ch in s.code[n.start_byte:n.end_byte])
-                +s.code[n.end_byte:]
+        def strip(self, node):
+            """Replace a node's text with whitespace, preserving newlines."""
+            self.code = (
+                self.code[:node.start_byte]
+                + bytes((ch if ch == 10 else 32) for ch in self.code[node.start_byte:node.end_byte])
+                + self.code[node.end_byte:]
             )
-            return s
+            return self
 
-        LANGS={ext:(get_language(l),get_parser(l),fn,cmt)for l,exts,fn,cmt in[
-            ('c',['.c','.h'],'(function_definition) @f','(comment) @c'),
-            ('cpp',['.cpp','.hpp','.cxx','.cc'],'(function_definition) @f','(comment) @c'),
-            ('java',['.java'],'(method_declaration) @f','[(line_comment)(block_comment)] @c'),
-            ('python',['.py'],'(function_definition) @f','(comment) @c'),
-            ('csharp',['.cs'],'(method_declaration) @f','(comment) @c')
-        ]for ext in exts}
+        LANGS = {
+            ext: (get_language(lang), get_parser(lang), fn_query, cmt_query)
+            for lang, exts, fn_query, cmt_query in [
+                ('c', ['.c', '.h'], '(function_definition) @f', '(comment) @c'),
+                ('cpp', ['.cpp', '.hpp', '.cxx', '.cc'], '(function_definition) @f', '(comment) @c'),
+                ('java', ['.java'], '(method_declaration) @f', '[(line_comment)(block_comment)] @c'),
+                ('python', ['.py'], '(function_definition) @f', '(comment) @c'),
+                ('csharp', ['.cs'], '(method_declaration) @f', '(comment) @c')
+            ]
+            for ext in exts
+        }
+
