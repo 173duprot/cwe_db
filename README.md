@@ -20,14 +20,6 @@ pip install git+https://github.com/173duprot/cwe_db.git
 
 ## Quick Start
 
-### Command Line
-
-```bash
-cwe_db ./output.db ./manifest.xml ./testcases --min-lines 6
-```
-
-### Python API
-
 ```python
 import cwe_db
 
